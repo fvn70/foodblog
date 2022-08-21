@@ -29,6 +29,10 @@ def create_db(db_name):
     flds = '''  meal_id INTEGER PRIMARY KEY,
                 meal_name TEXT NOT NULL UNIQUE'''
     create_table(conn, 'meals', flds)
+    flds = '''  recipe_id INTEGER PRIMARY KEY,
+                recipe_name TEXT NOT NULL,
+                recipe_description TEXT'''
+    create_table(conn, 'recipes', flds)
     return conn
 
 def add_data(conn):
@@ -46,6 +50,19 @@ def add_data(conn):
 
     conn.commit()
 
+def add_recipes(conn):
+    cur = conn.cursor()
+    print('Pass the empty recipe name to exit.')
+    while True:
+        name = input('Recipe name: ')
+        if not name:
+            conn.commit()
+            return
+        txt = input('Recipe description: ')
+        cur.execute(f"""INSERT INTO recipes (recipe_name, recipe_description)
+                        VALUES ('{name}', '{txt}');""")
+
+
 def main():
     args = sys.argv
     if len(args) != 2:
@@ -55,7 +72,8 @@ def main():
     db_name = args[1]
     conn = create_db(db_name)
     add_data(conn)
-    print('db_name =', db_name)
+    add_recipes(conn)
+    conn.close()
 
 if __name__ == "__main__":
     main()
