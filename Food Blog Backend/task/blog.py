@@ -5,6 +5,7 @@ def connect_db(db_file):
     conn = None
     try:
         conn = sqlite3.connect(db_file)
+        conn.execute("PRAGMA foreign_keys = 1")
         return conn
     except sqlite3.Error as e:
         print(e)
@@ -16,6 +17,7 @@ def create_table(conn, t_name, flds):
         c = conn.cursor()
         c.execute(sql)
     except sqlite3.Error as e:
+        print('Error create_table', t_name)
         print(e)
 
 def create_db(db_name):
@@ -33,6 +35,12 @@ def create_db(db_name):
                 recipe_name TEXT NOT NULL,
                 recipe_description TEXT'''
     create_table(conn, 'recipes', flds)
+    flds = '''  serve_id INTEGER PRIMARY KEY,
+                meal_id INTEGER NOT NULL,
+                recipe_id INTEGER NOT NULL,
+                FOREIGN KEY (meal_id) REFERENCES meals (meal_id),
+                FOREIGN KEY (recipe_id) REFERENCES recipes (recipe_id)'''
+    create_table(conn, 'serve', flds)
     return conn
 
 def add_data(conn):
@@ -51,6 +59,8 @@ def add_data(conn):
     conn.commit()
 
 def add_recipes(conn):
+    q = '''1) breakfast  2) brunch  3) lunch  4) supper 
+When the dish can be served: '''
     cur = conn.cursor()
     print('Pass the empty recipe name to exit.')
     while True:
@@ -59,9 +69,13 @@ def add_recipes(conn):
             conn.commit()
             return
         txt = input('Recipe description: ')
-        cur.execute(f"""INSERT INTO recipes (recipe_name, recipe_description)
-                        VALUES ('{name}', '{txt}');""")
+        rec_id = cur.execute(f"""INSERT INTO recipes (recipe_name, recipe_description)
+                        VALUES ('{name}', '{txt}');""").lastrowid
 
+        meals = input(q).split()
+        for id in meals:
+            cur.execute(f"""INSERT INTO serve (meal_id, recipe_id)
+                        VALUES ('{int(id)}', '{rec_id}');""")
 
 def main():
     args = sys.argv
