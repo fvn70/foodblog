@@ -113,8 +113,8 @@ def add_quantity(cur, rec_id):
 
 def add_recipes(conn):
     cur = conn.cursor()
-    print('Pass the empty recipe name to exit.')
     while True:
+        print('Pass the empty recipe name to exit.')
         name = input('Recipe name: ')
         if not name:
             conn.commit()
@@ -125,16 +125,52 @@ def add_recipes(conn):
         add_serve(cur, rec_id)
         add_quantity(cur, rec_id)
 
+def get_recipes(conn, ingrs, meals):
+    meals = tuple(meals)
+    if len(meals) == 1:
+        meals = f'("{meals[0]}")'
+
+    cond = ''
+    for x in ingrs:
+        if cond:
+            cond += ' INTERSECT '
+        cond += f'SELECT recipe_id FROM quantity WHERE ingredient_id = {get_ing_id(x)}'
+
+    cur = conn.cursor()
+    sql = f''' SELECT recipe_name FROM recipes
+                WHERE recipe_id IN
+                    (SELECT recipe_id FROM serve
+                     WHERE meal_id IN
+                        (SELECT meal_id FROM meals
+                        WHERE meal_name IN {meals})
+                    INTERSECT
+                    {cond})
+                ORDER BY recipe_name
+            '''
+    recs = cur.execute(sql).fetchall()
+    if recs:
+        recs = ', '.join([x[0] for x in recs])
+        print('Recipes selected for you:', recs)
+    else:
+        print('There are no such recipes in the database.')
+
+    conn.commit()
+
 def main():
     args = sys.argv
-    if len(args) != 2:
+    if len(args) == 1:
         print('Specify the DB name as an argument')
         exit()
 
     db_name = args[1]
     conn = create_db(db_name)
     add_data(conn)
-    add_recipes(conn)
+    if len(args) == 4:
+        ingrs = args[2][args[2].index('=')+1:].split(',')
+        meals = args[3][args[3].index('=')+1:].split(',')
+        get_recipes(conn, ingrs, meals)
+    else:
+        add_recipes(conn)
     conn.close()
 
 if __name__ == "__main__":
